@@ -1,17 +1,298 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="cs">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Home Page</title>
+    <title>Generátor objednávek - Mariánská</title>
+    <style>
+        :root { --main-font: 'Bookman Old Style', Calibri, serif; }
+        body { font-family: 'Bookman Old Style', Calibri; background-color: #f4f4f9; margin: 0; padding: 20px; }
+        
+        .controls { 
+            max-width: 850px; margin: 0 auto 20px auto; background: white; padding: 20px; 
+            border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); 
+        }
+        .row { display: flex; gap: 15px; margin-bottom: 10px; flex-wrap: wrap; }
+        .input-group { display: flex; flex-direction: column; }
+        select, input { padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-family: inherit; }
+        button { padding: 10px 15px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        .btn-add { background: #28a745; margin-top: 18px; }
+
+        #document {
+            width: 210mm; min-height: 297mm; padding: 10mm 0; margin: 0 auto;
+            background: white; color: black; font-family: var(--main-font);
+            box-shadow: 0 0 10px rgba(0,0,0,0.1); line-height: 1.15;
+            display: flex; flex-direction: column; align-items: center;
+        }
+
+        .appendix { width: 95%; text-align: right; font-size: 11pt; margin-bottom: 5px; }
+        .top-table, .guest-table, .bottom-table { width: 95%; border-collapse: collapse; margin-bottom: 10px; }
+        .top-table td, .top-table th { border: 1px solid black; padding: 3px 6px; text-align: center; font-size: 10.5pt; }
+        .guest-table th { border: 1px solid black; font-weight: normal; font-size: 9pt; padding: 2px; }
+        .guest-table td { border: 1px solid black; padding: 4px; height: 18px; font-size: 10pt; text-align: center; }
+        .legend { width: 95%; font-size: 8pt; margin: 5px 0 15px 0; line-height: 1.1; }
+        .separator { border-top: 1pt dashed black; margin: 15px 0; width: 95%; }
+
+        .bottom-table td {font-family: Calibri; border: 1px solid black; padding: 6px; font-size: 11pt; vertical-align: bottom; }
+        .title-row { text-align: center; font-weight: bold; font-size: 12pt; padding: 10px 0 !important; }
+        .fill { border-bottom: 1px dotted black; font-weight: bold; padding-left: 5px; display: inline-block; }
+        
+        /* Styl pro podpis */
+        .signature-container {
+            position: relative;
+            height: 60px;
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+        }
+        .signature-img {
+            position: absolute;
+            bottom: 5px;
+            max-height: 80px; /* Upravte podle potřeby */
+            mix-blend-mode: multiply; /* Pomůže odstranit bílé pozadí u skenovaného podpisu */
+        }
+
+        .stamp-box { border: 1px solid black; width: 200px; height: 80px; text-align: center; vertical-align: middle !important; font-size: 10pt; font-weight: bold; }
+        .disclaimer { width: 95%; font-size: 8.5pt; margin-top: 10px; line-height: 1.1; }
+
+        @media print {
+            body { background: none; padding: 0; }
+            .controls { display: none; }
+            #document { box-shadow: none; margin: 0; width: 100%; }
+        }
+    </style>
 </head>
 <body>
 
-    <h1>Vitaj u Fera!</h1>
-    <p>Appky:</p>
+<div class="controls">
+    <h3>Nastavení dokumentu</h3>
+    <div class="row">
+        <div class="input-group">
+            <label>Termín od:</label>
+            <input type="date" id="dateFrom" onchange="updateView()">
+        </div>
+        <div class="input-group">
+            <label>Termín do:</label>
+            <input type="date" id="dateTo" onchange="updateView()">
+        </div>
+        <div class="input-group">
+            <label>Pokoj č.:</label>
+            <input type="text" id="roomNum" value="1" oninput="updateView()">
+        </div>
+        <div class="input-group">
+            <label>Počet osob celkem:</label>
+            <input type="number" id="manualCount" min="0" placeholder="auto" oninput="updateView()">
+        </div>
+        <div class="input-group">
+            <label>Počet nocí celkem:</label>
+            <input type="number" id="manualNights" min="0" placeholder="auto" oninput="updateView()">
+        </div>
+        <div class="input-group" style="flex-grow: 1;">
+            <label>Přidat osobu:</label>
+            <select id="personSelect">
+                <option value="František Lukáč|250|100">František Lukáč (250 Kč, 100% dotace)</option>
+                <option value="Jakub Zahumenský|280|0">Jakub Zahumenský (280 Kč)</option>
+                <option value="Petra Zahumenská|280|0">Petra Zahumenská (280 Kč)</option>
+                <option value="Jan Dolinár|280|0">Jan Dolinár (280 Kč)</option>
+                <option value="Pavlína Dolinárová|280|0">Pavlína Dolinárová (280 Kč)</option>
+                <option value="Marián Vlček|280|0">Marián Vlček (280 Kč)</option>
+                <option value="Michal Kabát|280|0">Michal Kabát (280 Kč)</option>
+            </select>
+        </div>
+        <button class="btn-add" onclick="addGuest()">Přidat</button>
+        <button class="btn-add" style="background:#6c757d" onclick="clearGuests()">Reset</button>
+    </div>
+    <button onclick="window.print()" style="width: 100%; margin-top: 15px; background: #333;">TISKNOUT (PDF)</button>
+</div>
+
+<div id="document">
+    <div class="appendix">Příloha č. 1</div>
     
-    <a href="generator prihlasky.html">Generator prihlasky na Marianskou</a>
+    <table class="top-table">
+        <tr>
+            <th style="width: 50%;">Jméno a příjmení objednatele</th>
+            <th style="width: 25%;">Počet osob celkem</th>
+            <th style="width: 25%;">Počet nocí celkem</th>
+        </tr>
+        <tr>
+            <td style="font-weight:bold;">František Lukáč</td>
+            <td id="v-count">0</td>
+            <td id="v-nights">0</td>
+        </tr>
+    </table>
+
+    <table class="top-table">
+        <tr>
+            <th>Celková cena****</th>
+            <th>Dotace SF ÚFP 100% *</th>
+            <th>Dotace SF ÚFP 50% **</th>
+            <th>Doplatek účet ÚFP ***</th>
+        </tr>
+        <tr>
+            <td id="v-total">0 Kč</td>
+            <td id="v-100">0 Kč</td>
+            <td id="v-50">0 Kč</td>
+            <td id="v-doplatek" style="font-weight:bold;">0 Kč</td>
+        </tr>
+    </table>
+
+    <p style="font-weight: bold; width: 95%; margin: 10px 0 2px 0; font-size: 11pt; text-align: left;">Seznam ubytovaných (osob/zvířat):</p>
+    <table class="guest-table">
+        <thead>
+            <tr>
+                <th style="width: 38%;">Jméno a příjmení</th>
+                <th style="width: 12%;">cena/noc</th>
+                <th style="width: 10%;">100%</th>
+                <th style="width: 10%;">50%</th>
+                <th style="width: 10%;">0%</th>
+                <th style="width: 20%;">Doplatek (účet ÚFP)</th>
+            </tr>
+        </thead>
+        <tbody id="guest-rows"></tbody>
+    </table>
+
+    <div class="legend">
+        * zaměstnanci, jejich nezaopatřené děti, manžel/manželka pobírající rodičovský příspěvek<br>
+        ** ostatní přímí rodinní příslušníci zaměstnance (manžel, manželka) důchodci (bývalí zaměstnanci), rodiče zaměstnance<br>
+        *** ostatní<br>
+        **** cena za: osobu/noc, domácí zvíře/noc - stanovena dle ceníku ÚFP
+    </div>
+
+    <div class="separator"></div>
+
+    <table class="bottom-table"; font-family='Calibri'>
+        <tr>
+            <td colspan="2" style="width: 65%; font-weight: bold; font-size: 12pt;">Ústav fyziky plazmatu AV ČR, v. v. i.</td>
+            <td rowspan="2" align="center">
+                <div class="stamp-box" style="margin: 0 auto; border: 1px solid black;">Razítko<br>organizace</div>
+            </td>
+        </tr>
+        <tr>
+            <td colspan="2" class="title-row">Objednávka pobytu ve školícím a rekreačním středisku Mariánská</td>
+        </tr>
+        <tr>
+            <td colspan="3">
+                Termín* od: <span class="fill" id="f-from" style="width: 120px;"></span> 
+                do: <span class="fill" id="f-to" style="width: 120px;"></span>
+            </td>
+        </tr>
+        <tr>
+            <td colspan="3">Jméno a příjmení objednavatele, * (počet osob, číslo pokoje): 
+                <span class="fill" id="f-buyer" style="width: 350px;"></span>
+            </td>
+        </tr>
+        <tr>
+            <td colspan="3">Adresa:* ulice: <span class="fill" style="width: 200px;">Kloboučnická</span> 
+                číslo popisné: <span class="fill" style="width: 80px;">11</span>
+                <br>obec: <span class="fill" style="width: 180px;">Praha 4</span> 
+                PSČ: <span class="fill" style="width: 80px;">140 00</span>
+            </td>
+        </tr>
+        <tr>
+            <td>Telefon do zaměstnání, domů, mobil*:
+                <span class="fill" style="width: 180px;">266053077, 775073698</span>
+            </td>
+            <td style="text-align: center;">
+        
+                Datum a podpis objednatele*<br> 
+                <td>
+                <div class="signature-container">
+                    <img src="podpis.png" class="signature-img" alt="">
+                </div> 
+                
+                <span class="fill" id="f-date-today" style="width: 80px;"></span>
+                </td>
+            </td>
+        </tr>
+        <tr>
+            <td>Celková cena ÚFP AV ČR, v. v. i.:** <br>
+                <span class="fill" id="f-price" style="width: 150px;"></span>
+            </td>
+            <td style="text-align: center; font-size: 9pt; line-height: 1;">
+                <div style="height: 40px;"></div>
+                Datum a podpis odpovědného zástupce<br>ÚFP AV ČR, v. v. i.:**<br>
+                <td>
+                <span class="fill" style="width: 80px; height: 15px;"></span>
+                </td>
+            </td>
+        </tr>
+        <tr>
+            <td colspan="3">
+                Číslo účtu: <span class="fill" style="width: 200px;">101256389 / 0300</span>
+            </td>
+        </tr>
+    </table>
+
+    <div class="disclaimer">
+        Objednávající stvrzuje svým podpisem, že bere na vědomí: 1) Povinnost sdělit správci údaje o všech ubytovaných osobách pro účely ubytovací knihy a poplatku z pobytu. 2) V RS Mariánská platí zákaz kouření ve všech prostorách objektu.
+    </div>
+</div>
+
+<script>
+    let guests = [];
+
+    function addGuest() {
+        const val = document.getElementById('personSelect').value.split('|');
+        guests.push({ name: val[0], price: parseInt(val[1]), subsidy: parseInt(val[2]) });
+        updateView();
+    }
+
+    function clearGuests() { guests = []; updateView(); }
+
+    function updateView() {
+        const fromVal = document.getElementById('dateFrom').value;
+        const toVal = document.getElementById('dateTo').value;
+        const from = new Date(fromVal);
+        const to = new Date(toVal);
+        const derivedNights = (fromVal && toVal) ? Math.max(0, (to - from) / (1000 * 60 * 60 * 24)) : 0;
+        const manualNightsEl = document.getElementById('manualNights');
+        const manualCountEl = document.getElementById('manualCount');
+        // Use manual inputs when provided, otherwise fall back to computed values
+        let nights = (manualNightsEl && manualNightsEl.value !== '') ? Number(manualNightsEl.value) : derivedNights;
+        if (manualNightsEl && manualNightsEl.value === '') manualNightsEl.value = derivedNights;
+        
+        const rows = document.getElementById('guest-rows');
+        rows.innerHTML = '';
+        let sTotal = 0, s100 = 0, s50 = 0, sDop = 0;
+
+        guests.forEach(g => {
+            let rowTotal = g.price * nights;
+            let dop = (g.subsidy === 100) ? 0 : (g.subsidy === 50 ? rowTotal/2 : rowTotal);
+            sTotal += rowTotal; sDop += dop;
+            if(g.subsidy === 100) s100 += rowTotal; else if(g.subsidy === 50) s50 += (rowTotal/2);
+            rows.innerHTML += `<tr><td align="left">${g.name}</td><td>${g.price}</td><td>${g.subsidy==100?'X':''}</td><td>${g.subsidy==50?'X':''}</td><td>${g.subsidy==0?'X':''}</td><td>${dop}</td></tr>`;
+        });
+
+        for(let i=guests.length; i<6; i++) rows.innerHTML += `<tr><td>&nbsp;</td><td></td><td></td><td></td><td></td><td></td></tr>`;
+
+        const count = (manualCountEl && manualCountEl.value !== '') ? Number(manualCountEl.value) : guests.length;
+        if (manualCountEl && manualCountEl.value === '') manualCountEl.value = guests.length;
+
+        document.getElementById('v-count').innerText = count;
+        document.getElementById('v-nights').innerText = nights;
+        document.getElementById('v-total').innerText = sTotal + " Kč";
+        document.getElementById('v-100').innerText = s100 + " Kč";
+        document.getElementById('v-50').innerText = s50 + " Kč";
+        document.getElementById('v-doplatek').innerText = sDop + " Kč";
+        
+        const fmtD = (d) => d ? d.split('-').reverse().join('.') : '';
+        document.getElementById('f-from').innerText = fmtD(fromVal);
+        document.getElementById('f-to').innerText = fmtD(toVal);
+        document.getElementById('f-buyer').innerText = `František Lukáč (${count}, pokoj ${document.getElementById('roomNum').value})`;
+        document.getElementById('f-price').innerText = sDop + " Kč";
+
+        // Dnešní datum pod podpis
+        const today = new Date();
+        document.getElementById('f-date-today').innerText = today.toLocaleDateString('cs-CZ');
+    }
+
+    window.onload = () => {
+        const d = new Date().toISOString().split('T')[0];
+        document.getElementById('dateFrom').value = d;
+        document.getElementById('dateTo').value = d;
+        updateView();
+    };
+</script>
 
 </body>
-
 </html>
