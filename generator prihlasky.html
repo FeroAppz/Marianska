@@ -79,6 +79,14 @@
             <label>Pokoj č.:</label>
             <input type="text" id="roomNum" value="1" oninput="updateView()">
         </div>
+        <div class="input-group">
+            <label>Počet osob celkem:</label>
+            <input type="number" id="manualCount" min="0" placeholder="auto" oninput="updateView()">
+        </div>
+        <div class="input-group">
+            <label>Počet nocí celkem:</label>
+            <input type="number" id="manualNights" min="0" placeholder="auto" oninput="updateView()">
+        </div>
         <div class="input-group" style="flex-grow: 1;">
             <label>Přidat osobu:</label>
             <select id="personSelect">
@@ -236,7 +244,12 @@
         const toVal = document.getElementById('dateTo').value;
         const from = new Date(fromVal);
         const to = new Date(toVal);
-        const nights = (fromVal && toVal) ? Math.max(0, (to - from) / (1000 * 60 * 60 * 24)) : 0;
+        const derivedNights = (fromVal && toVal) ? Math.max(0, (to - from) / (1000 * 60 * 60 * 24)) : 0;
+        const manualNightsEl = document.getElementById('manualNights');
+        const manualCountEl = document.getElementById('manualCount');
+        // Use manual inputs when provided, otherwise fall back to computed values
+        let nights = (manualNightsEl && manualNightsEl.value !== '') ? Number(manualNightsEl.value) : derivedNights;
+        if (manualNightsEl && manualNightsEl.value === '') manualNightsEl.value = derivedNights;
         
         const rows = document.getElementById('guest-rows');
         rows.innerHTML = '';
@@ -252,7 +265,10 @@
 
         for(let i=guests.length; i<6; i++) rows.innerHTML += `<tr><td>&nbsp;</td><td></td><td></td><td></td><td></td><td></td></tr>`;
 
-        document.getElementById('v-count').innerText = guests.length;
+        const count = (manualCountEl && manualCountEl.value !== '') ? Number(manualCountEl.value) : guests.length;
+        if (manualCountEl && manualCountEl.value === '') manualCountEl.value = guests.length;
+
+        document.getElementById('v-count').innerText = count;
         document.getElementById('v-nights').innerText = nights;
         document.getElementById('v-total').innerText = sTotal + " Kč";
         document.getElementById('v-100').innerText = s100 + " Kč";
@@ -262,7 +278,7 @@
         const fmtD = (d) => d ? d.split('-').reverse().join('.') : '';
         document.getElementById('f-from').innerText = fmtD(fromVal);
         document.getElementById('f-to').innerText = fmtD(toVal);
-        document.getElementById('f-buyer').innerText = `František Lukáč (${guests.length}, pokoj ${document.getElementById('roomNum').value})`;
+        document.getElementById('f-buyer').innerText = `František Lukáč (${count}, pokoj ${document.getElementById('roomNum').value})`;
         document.getElementById('f-price').innerText = sDop + " Kč";
 
         // Dnešní datum pod podpis
